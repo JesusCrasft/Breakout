@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+	<head>
+		<title>Breackud</title>
+		<meta charset="utf-8">
+		<style>
+			html {
+				background-color: red;
+			}
+			#juego {
+				width: 480px;
+				height: 320px;
+				position: relative;
+			}
+			#canvas {
+				background-image: url('img/fondo.jpg');
+				border: 1px solid;
+			}
+			#modal {
+				position: absolute;
+				top: 0px;
+				left: 0px;
+				width: 100%;
+				height: 100%;
+				background-color: rgba(0,0,0,0.7);
+			}
+			#boton {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translateX(-50%) translateY(-50%);
+			}
+		</style>
+	</head>
+
+	<body>
+		<center>
+			<div id="juego">
+				<canvas id="canvas" width="480" height="320"></canvas> <button onclick="Pausa();">Pausa</button>
+				<div id="modal">
+					<button id="boton">
+						<img src="img/play.png" />
+					</button>
+				</div>
+			</div>
+		</center>
+		<script>
+			var canvas = document.getElementById('canvas');
+			var ctx = canvas.getContext('2d');
+			var vidas = 3;
+			var puntajeA = 0; 
+			var puntaje = 0;
+			var nivel = 0;
+			var boton = document.getElementById('boton');
+			var boom = document.createElement("audio");
+			boom.src = 'https://drive.google.com/file/d/0B_LZpu4jv-YseDdIZk1qNWozSGFGM2lSeVQwWXF2MlRlY0Zz/view';
+
+			boton.addEventListener("click", IniciarJ);
+
+			function Pausa() {
+				alert("Pausa");
+			}
+
+			ju = prompt("Escriba el nombre del jugador");
+
+			function dibujarJ() {
+				ctx.fillStyle = 'yellow';
+				ctx.font = "15px Arial";
+				ctx.fillText("El jugador es: " +ju, 190, 15);
+			}
+
+			function numeroA(num1, num2) {
+				return Math.round((Math.random() * num2) + num1);
+			}
+
+			function signoA() {
+				var num = numeroA(0,1);
+				switch(num) {
+					case 0:
+						return -1;
+						break;
+					case 1:
+						return 1;
+						break;
+				}
+			}
+
+			//raqueta
+			var raqueta = {
+				x : numeroA(0,410),
+				y : canvas.height-10,
+				w : 70,
+				h : 10,
+				img : document.createElement("img"),
+				derecha : false,
+				izquierda : false,
+				velocidad : 7
+			};
+			raqueta.img.src = 'img/raqueta.png';
+			function dibujarR() {
+				ctx.drawImage(raqueta.img, raqueta.x, raqueta.y);
+			}
+			function moverR() {
+				if (raqueta.izquierda && raqueta.x < canvas.width - raqueta.w) {
+					raqueta.x += raqueta.velocidad;
+				}
+				if (raqueta.derecha && raqueta.x > 0) {
+					raqueta.x -= raqueta.velocidad;
+				}
+			}
+
+			document.addEventListener("keydown", function (event) {
+				if (event.keyCode == 39) {
+					raqueta.izquierda = true;
+				}
+				if (event.keyCode == 37) {
+					raqueta.derecha = true;
+				}
+			});
+			document.addEventListener("keyup", function (event) {
+				if (event.keyCode == 39) {
+					raqueta.izquierda = false;
+				}
+				if (event.keyCode == 37) {
+					raqueta.derecha = false;
+				}
+			});
+			//fin raqueta
+
+			//pelota
+			var pelota  = {
+				x : numeroA(0,410),
+				y : canvas.height/2,
+				r : 10,
+				xdir : 2 * signoA(),
+				ydir : 2,
+				color : "red"
+			};
+			function dibujarP() {
+				ctx.fillStyle = pelota.color;
+				ctx.beginPath();
+				ctx.arc(pelota.x, pelota.y, pelota.r, 0, Math.PI*2);
+				ctx.fill();
+			}
+			function moverP() {
+				pelota.x += pelota.xdir;
+				pelota.y += pelota.ydir;  
+			}
+			function nivelB() {
+				pelota.x = numeroA(0,410);
+				pelota.y = canvas.height / 2;
+				pelota.xdir = Math.abs(pelota.xdir);
+				pelota.ydir = Math.abs(pelota.ydir);
+				pelota.xdir++;
+				pelota.ydir++;
+			}
+			//finpelota
+
+			//bloques
+			var bloques = [];
+			var infob = {
+				ancho : 75, 
+				columnas : 5,
+				filas : 3,
+				alto : 20,
+				margen : 10,
+				top : 30,
+				left : 30,
+				img : document.createElement("img")
+			};
+			infob.img.src = 'img/bloque.png';
+			function CrearB() {
+				for(c = 0;c < infob.columnas;c++) {
+					bloques[c] = [];
+					for(f = 0;f < infob.filas;f++) {
+						var bloquesX = infob.left + (c * (infob.ancho + infob.margen));
+						var bloquesY = infob.top + (f * (infob.alto + infob.margen));	
+						bloques[c][f] = {x : bloquesX,y : bloquesY, status : 1};
+					}
+				}
+			}
+			CrearB();
+			function dibujarB() {
+				for(c = 0;c < infob.columnas;c++) {
+					for(f = 0;f < infob.filas;f++) {
+						if (bloques[c][f].status == 1) {
+							ctx.drawImage(infob.img, bloques[c][f].x, bloques[c][f].y);
+						}
+					}
+				}	
+			}
+			function colisionesB() {
+				for(c = 0;c < infob.columnas;c++) {
+					for(f = 0;f < infob.filas;f++) {
+						var bloqueA = bloques[c][f];
+						if (bloqueA.status == 1) {
+							if (pelota.x > bloqueA.x && pelota.x < (bloqueA.x + infob.ancho) && pelota.y > bloqueA.y && pelota.y < (bloqueA.y + infob.alto)) {
+								bloqueA.status = 0;
+								pelota.ydir = -pelota.ydir;
+								puntajeA++;
+								playS(boom);
+								if(puntajeA == infob.columnas * infob.filas) {
+									AumentarN();
+								}
+							}
+						}
+					}
+				}
+			}
+			//fin bloques
+
+			function playS(s) {
+				s.currentTime = 0;
+				s.play();
+			}
+
+			function AumentarN() {
+				alert("Felicidades Pasaste de Nivel");
+				nivel++;
+				CrearB();
+				nivelB();
+				puntajeA = puntaje;
+				puntajeA = 0;
+			}
+
+			function PerderV() {
+				if (vidas > 0) {
+					alert("Te mataste");
+					vidas--;
+				} else {
+					alert("Fin de juego");
+					FinJ();
+				}
+			}
+
+			function dibujarI() {
+				ctx.fillStyle = 'yellow';
+				ctx.fillText("Vidas restantes son: " +vidas, 5, 15);
+				ctx.fillText("Nivel: " +nivel, canvas.width - 50, 15);
+			}
+
+			function FinJ() {
+				document.location.reload();
+			}		
+
+			function dibujar() {
+				ctx.clearRect(0,0,canvas.width,canvas.height);
+				dibujarP();
+				dibujarR();
+				dibujarI();
+				dibujarB();
+				dibujarJ();
+			}
+
+			function actualizar() {
+				moverR();
+				moverP();
+			}
+
+			function colisiones() {
+				if (pelota.x <= pelota.r || pelota.x >= canvas.width - pelota.r) {
+					pelota.xdir = -pelota.xdir;
+				}
+				if (pelota.y <= 0) {
+					pelota.ydir = -pelota.ydir;
+				}
+				if (pelota.y >= canvas.height - pelota.r) {
+					pelota.ydir = -pelota.ydir;
+					if (!(pelota.x > raqueta.x && pelota.x < raqueta.x + raqueta.w)) {
+						PerderV();
+					}
+				}
+				colisionesB();
+			}
+
+			function frame() {
+				actualizar();
+				colisiones();
+				dibujar();
+				requestAnimationFrame(frame);
+			}
+
+			function IniciarJ() {
+				var modal = document.getElementById('modal');
+				modal.style.display = 'none';
+				frame();
+			}
+		</script>
+	</body>
+</html>
